@@ -720,29 +720,27 @@ void Oregon_NR::get_tacts(byte *cdptr, byte bitsize)
 
   // Печать расшифорвки
 #if OREGON_RECEIVER_DUMP == 1
+  byte *cdp = cdptr;
+  Serial.print("BEFORE ");
+
+  for (int bt = 0; bt < bitsize; bt++)
+
   {
-    byte *cdp = cdptr;
-    Serial.print("BEFORE ");
 
-    for (int bt = 0; bt < bitsize; bt++)
-
-    {
-
-      if (decode_tacts[bt] == 1)
-        Serial.print("II");
-      if (decode_tacts[bt] == 0)
-        Serial.print("OO");
-      if (decode_tacts[bt] == 2)
-        Serial.print("__");
-      if (decode_tacts[bt] == 3)
-        Serial.print("IO");
-      if (decode_tacts[bt] == 4)
-        Serial.print("OI");
-      Serial.print(" ");
-      *cdp++;
-    }
-    Serial.println();
+    if (decode_tacts[bt] == 1)
+      Serial.print("II");
+    if (decode_tacts[bt] == 0)
+      Serial.print("OO");
+    if (decode_tacts[bt] == 2)
+      Serial.print("__");
+    if (decode_tacts[bt] == 3)
+      Serial.print("IO");
+    if (decode_tacts[bt] == 4)
+      Serial.print("OI");
+    Serial.print(" ");
+    *cdp++;
   }
+  Serial.println();
 #endif
 
   // Расшифровали всё, что смогли с ходу
@@ -880,26 +878,24 @@ void Oregon_NR::get_tacts(byte *cdptr, byte bitsize)
 
   // Печать расшифорвки
 #if OREGON_RECEIVER_DUMP == 1
+  byte *cdp = cdptr;
+  Serial.print("AFTER  ");
+  for (int bt = 0; bt < bitsize; bt++)
   {
-    byte *cdp = cdptr;
-    Serial.print("AFTER  ");
-    for (int bt = 0; bt < bitsize; bt++)
-    {
-      if (decode_tacts[bt] == 1)
-        Serial.print("II");
-      if (decode_tacts[bt] == 0)
-        Serial.print("OO");
-      if (decode_tacts[bt] == 2)
-        Serial.print("__");
-      if (decode_tacts[bt] == 3)
-        Serial.print("IO");
-      if (decode_tacts[bt] == 4)
-        Serial.print("OI");
-      Serial.print(" ");
-      *cdp++;
-    }
-    Serial.println();
+    if (decode_tacts[bt] == 1)
+      Serial.print("II");
+    if (decode_tacts[bt] == 0)
+      Serial.print("OO");
+    if (decode_tacts[bt] == 2)
+      Serial.print("__");
+    if (decode_tacts[bt] == 3)
+      Serial.print("IO");
+    if (decode_tacts[bt] == 4)
+      Serial.print("OI");
+    Serial.print(" ");
+    *cdp++;
   }
+  Serial.println();
 #endif
 
   return;
