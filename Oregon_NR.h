@@ -95,20 +95,8 @@
 #define CAPRAIN 0x8800 // Емкостной всепогодный датчик осадков
 //
 //Этими параметрами можно поиграть для экономии ресурсов
-#ifndef OREGON_DEBUG_INFO
-#define OREGON_DEBUG_INFO 1
-#endif
-#ifndef OREGON_RECEIVER_DUMP
-#define OREGON_RECEIVER_DUMP 1 // Сбрасывать ли дамп канала в Serial. работает тольок если OREGON_DEBUG_INFO = 1
-                               // фактически это осциллограмма огибающей сигнала с приёмника      
-                               // Также выводятся тактовые последовательности до и после восстановления
-#endif
-#ifndef ADD_SENS_SUPPORT
 #define ADD_SENS_SUPPORT 1 // ПОддежка дополнительных типов датчиков собственной разработки - отключение незначительно экономит ресурсы
-#endif
-#ifndef IS_ASSEMBLE
-#define IS_ASSEMBLE 1 // Пытаться ли собрать из двух повреждённых пакетов один целый (для v2) - сильно экономит ОЗУ!
-#endif
+#define IS_ASSEMBLE 1      // Пытаться ли собрать из двух повреждённых пакетов один целый (для v2) - сильно экономит ОЗУ!
 //
 // Этими параметрами можно поиграть для настройки наилучшего приёма
 
@@ -166,7 +154,7 @@ public:
   Oregon_NR(byte, byte, byte, bool); //(вывод приёмника, номер прерывания, вывод светодиода, pull up)
   void start();                      //Star listening receiver
   void stop();                       //Stop listening receiver. Чтобы не занимал процессор, когда не нужен
-  void capture();                //Capture packet.
+  void capture(bool);                //Capture packet. if parameter is true function dumps capture data to Serial.
 
   bool consist_synchro = false; //При поиске синхронибла опираться подтверждённые или сомнительные данные?
 
@@ -194,6 +182,10 @@ public:
   //1 - восстановлены двойные такты
   //2 - исправление версии протокола при разборке пакета
   //3 - восстановлено методом сращивания (v2) - отключено для экономии ресурсов
+
+  bool receiver_dump = 0; //Сбрасывать ли дамп канала в Serial. работает тольок если capture(true)
+                          // фактически это осциллограмма огибающей сигнала с приёмника
+                          // Также выводятся тактовые последовательности до и после восстановления
 
 #if ADD_SENS_SUPPORT == 1
   float sens_pressure, //Pressure
