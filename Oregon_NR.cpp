@@ -80,6 +80,7 @@
 #define Oregon_NR_int
 static volatile unsigned long pm;
 static volatile unsigned long pl, timer_mark;
+
 void receiver_interruption(void)
 {
   if (digitalRead(RECEIVER_PIN))
@@ -136,7 +137,7 @@ void Oregon_NR::stop()
 //Захват и анализ пакета
 //DEBUG_INFO - в Serial выводится информация о захвате данных
 //////////////////////////////////////////////////////////////////////
-void Oregon_NR::capture(bool DEBUG_INFO)
+void Oregon_NR::capture()
 {
   ////////////////////////////////////////////////////////
   // Возвращаемся к исходному состоянию
@@ -286,32 +287,31 @@ void Oregon_NR::capture(bool DEBUG_INFO)
     restore_sign = 0;
 
     //Дамп собранных данных
-    //ДЛя посылки без помех значения имурльсов олжны быть примерно
-    // v2 - 87 07  и изредка 86 06, т.к. длина импульса 883мс и 395мс
-    // v3 - 86 06 и изредка 87 07  т.к. длина импульса 838 и 350мс
-    if (DEBUG_INFO && receiver_dump)
+    //Для посылки без помех значения импульсов должны быть примерно
+    // v2 - 87 07 и изредка 86 06, т.к. длина импульса 883мс и 395мс
+    // v3 - 86 06 и изредка 87 07  т.к. длина импульса 838мс и 350мс
+#if OREGON_DEBUG_INFO == 1 && OREGON_RECEIVER_DUMP == 1
+    Serial.println(" ");
+    Serial.print("SCOPE1 ");
+    for (int bt = 0; bt < read_tacts; bt++)
     {
-      Serial.println(" ");
-      Serial.print("SCOPE1 ");
-      for (int bt = 0; bt < read_tacts; bt++)
+      Serial.print((collect_data[bt] & 0xF0) >> 4, HEX);
+      Serial.print(collect_data[bt] & 0x0F, HEX);
+      Serial.print(' ');
+    }
+    Serial.println(" ");
+    if (packet_number == 2)
+    {
+      Serial.print("SCOPE2 ");
+      for (int bt = 0; bt < read_tacts2; bt++)
       {
-        Serial.print((collect_data[bt] & 0xF0) >> 4, HEX);
-        Serial.print(collect_data[bt] & 0x0F, HEX);
+        Serial.print((collect_data2[bt] & 0xF0) >> 4, HEX);
+        Serial.print(collect_data2[bt] & 0x0F, HEX);
         Serial.print(' ');
       }
       Serial.println(" ");
-      if (packet_number == 2)
-      {
-        Serial.print("SCOPE2 ");
-        for (int bt = 0; bt < read_tacts2; bt++)
-        {
-          Serial.print((collect_data2[bt] & 0xF0) >> 4, HEX);
-          Serial.print(collect_data2[bt] & 0x0F, HEX);
-          Serial.print(' ');
-        }
-        Serial.println(" ");
-      }
     }
+#endif
 
     //////////////////////////////////////////////
     //Обработка первой записи
@@ -334,42 +334,42 @@ void Oregon_NR::capture(bool DEBUG_INFO)
     synchro_pos = get_synchro_pos(collect_data);
     //////////////////////////////////////////////
     //Выводим посылку
-    if (DEBUG_INFO)
+#if OREGON_DEBUG_INFO == 1
+    if (packet_number == 2)
+      Serial.print("1)     ");
+    if (packet_number == 1)
+      Serial.print("RESULT ");
+    for (int bt = 0; bt < READ_BITS; bt++)
     {
-      if (packet_number == 2)
-        Serial.print("1)     ");
-      if (packet_number == 1)
-        Serial.print("RESULT ");
-      for (int bt = 0; bt < READ_BITS; bt++)
+      if ((ver == 3 && bt <= read_tacts) || (ver == 2 && bt <= read_tacts / 2))
       {
-        if ((ver == 3 && bt <= read_tacts) || (ver == 2 && bt <= read_tacts / 2))
-        {
-          if (collect_data[bt] > 128 + 1)
-            Serial.print('I');
-          if (collect_data[bt] < 128 - 1)
-            Serial.print('O');
-          if (collect_data[bt] == 128 + 1)
-            Serial.print('i');
-          if (collect_data[bt] == 128 - 1)
-            Serial.print('o');
-          if (collect_data[bt] == 128)
-            Serial.print('.');
-          if (receiver_dump)
-            Serial.print("  ");
-        }
-        else
-          Serial.print(' ');
+        if (collect_data[bt] > 128 + 1)
+          Serial.print('I');
+        if (collect_data[bt] < 128 - 1)
+          Serial.print('O');
+        if (collect_data[bt] == 128 + 1)
+          Serial.print('i');
+        if (collect_data[bt] == 128 - 1)
+          Serial.print('o');
+        if (collect_data[bt] == 128)
+          Serial.print('.');
+#if OREGON_RECEIVER_DUMP == 1
+        Serial.print("  ");
+#endif
       }
-      Serial.print(" OSV:");
-      Serial.print(ver);
-      Serial.print(" SYN:");
-      if (synchro_pos < 255)
-        Serial.print(synchro_pos);
       else
-        Serial.print("NO");
-      Serial.print(" TIME:");
-      Serial.println(millis() / 1000);
+        Serial.print(' ');
     }
+    Serial.print(" OSV:");
+    Serial.print(ver);
+    Serial.print(" SYN:");
+    if (synchro_pos < 255)
+      Serial.print(synchro_pos);
+    else
+      Serial.print("NO");
+    Serial.print(" TIME:");
+    Serial.println(millis() / 1000);
+#endif
     //////////////////////////////////////////////
     //Аналогично обрабатываем вторую запись
     if (packet_number == 2)
@@ -388,39 +388,38 @@ void Oregon_NR::capture(bool DEBUG_INFO)
       }
 
       synchro_pos2 = get_synchro_pos(collect_data2);
-      if (DEBUG_INFO)
+#if OREGON_DEBUG_INFO == 1
+      Serial.print("2)     ");
+      for (int bt = 0; bt < READ_BITS; bt++)
       {
-        Serial.print("2)     ");
-        for (int bt = 0; bt < READ_BITS; bt++)
+        if (bt <= read_tacts2 / 2)
         {
-          if (bt <= read_tacts2 / 2)
-          {
-            if (collect_data2[bt] > 128 + 1)
-              Serial.print('I');
-            if (collect_data2[bt] < 128 - 1)
-              Serial.print('O');
-            if (collect_data2[bt] == 128 + 1)
-              Serial.print('i');
-            if (collect_data2[bt] == 128 - 1)
-              Serial.print('o');
-            if (collect_data2[bt] == 128)
-              Serial.print('.');
-            if (receiver_dump)
-              Serial.print("  ");
-          }
-          else
-            Serial.print(' ');
+          if (collect_data2[bt] > 128 + 1)
+            Serial.print('I');
+          if (collect_data2[bt] < 128 - 1)
+            Serial.print('O');
+          if (collect_data2[bt] == 128 + 1)
+            Serial.print('i');
+          if (collect_data2[bt] == 128 - 1)
+            Serial.print('o');
+          if (collect_data2[bt] == 128)
+            Serial.print('.');
+#if OREGON_RECEIVER_DUMP == 1
+          Serial.print("  ");
+#endif
         }
-
-        Serial.print(" OSV:");
-        Serial.print(ver);
-        Serial.print(" SYN:");
-        if (synchro_pos2 < 255)
-          Serial.print(synchro_pos2);
         else
-          Serial.print("NO");
-        ;
+          Serial.print(' ');
       }
+
+      Serial.print(" OSV:");
+      Serial.print(ver);
+      Serial.print(" SYN:");
+      if (synchro_pos2 < 255)
+        Serial.print(synchro_pos2);
+      else
+        Serial.print("NO");
+#endif
     }
     byte *result_data, result_data_start, aux_data;
     int correlation;
@@ -436,11 +435,10 @@ void Oregon_NR::capture(bool DEBUG_INFO)
     if (packet_number == 2)
     {
       correlation = correlate_data(collect_data, collect_data2);
-      if (DEBUG_INFO)
-      {
-        Serial.print(" COR: ");
-        Serial.println(correlation);
-      }
+#if OREGON_DEBUG_INFO == 1
+      Serial.print(" COR: ");
+      Serial.println(correlation);
+#endif
       //////////////////////////////////////////////
       //Собираем данные в пакет, где синхронибл найден раньше
       //////////////////////////////////////////////
@@ -461,7 +459,8 @@ void Oregon_NR::capture(bool DEBUG_INFO)
     }
     //////////////////////////////////////////////
     //Вывод готовой посылки
-    if (DEBUG_INFO && packet_number == 2)
+#if OREGON_DEBUG_INFO == 1
+    if (packet_number == 2)
     {
       Serial.print("RESULT ");
       byte *rdt = result_data;
@@ -479,8 +478,9 @@ void Oregon_NR::capture(bool DEBUG_INFO)
             Serial.print('o');
           if (*rdt == 128)
             Serial.print('.');
-          if (receiver_dump)
-            Serial.print("  ");
+#if OREGON_RECEIVER_DUMP == 1
+          Serial.print("  ");
+#endif
         }
         else
           Serial.print(' ');
@@ -488,6 +488,7 @@ void Oregon_NR::capture(bool DEBUG_INFO)
       }
       Serial.println(" ");
     }
+#endif
 
     //Проверяем, дало ли что-нибудь сращивание - отключил. Это даёт всего лишь флаг, но занимает много времени
     //////////////////////////////////////////////
@@ -718,30 +719,29 @@ void Oregon_NR::get_tacts(byte *cdptr, byte bitsize)
   }
 
   // Печать расшифорвки
-  if (receiver_dump)
+#if OREGON_RECEIVER_DUMP == 1
+  byte *cdp = cdptr;
+  Serial.print("BEFORE ");
+
+  for (int bt = 0; bt < bitsize; bt++)
+
   {
-    byte *cdp = cdptr;
-    Serial.print("BEFORE ");
 
-    for (int bt = 0; bt < bitsize; bt++)
-
-    {
-
-      if (decode_tacts[bt] == 1)
-        Serial.print("II");
-      if (decode_tacts[bt] == 0)
-        Serial.print("OO");
-      if (decode_tacts[bt] == 2)
-        Serial.print("__");
-      if (decode_tacts[bt] == 3)
-        Serial.print("IO");
-      if (decode_tacts[bt] == 4)
-        Serial.print("OI");
-      Serial.print(" ");
-      *cdp++;
-    }
-    Serial.println();
+    if (decode_tacts[bt] == 1)
+      Serial.print("II");
+    if (decode_tacts[bt] == 0)
+      Serial.print("OO");
+    if (decode_tacts[bt] == 2)
+      Serial.print("__");
+    if (decode_tacts[bt] == 3)
+      Serial.print("IO");
+    if (decode_tacts[bt] == 4)
+      Serial.print("OI");
+    Serial.print(" ");
+    *cdp++;
   }
+  Serial.println();
+#endif
 
   // Расшифровали всё, что смогли с ходу
   //Проверяем допустима ли тактовая последовательность
@@ -877,27 +877,26 @@ void Oregon_NR::get_tacts(byte *cdptr, byte bitsize)
   }
 
   // Печать расшифорвки
-  if (receiver_dump)
+#if OREGON_RECEIVER_DUMP == 1
+  byte *cdp = cdptr;
+  Serial.print("AFTER  ");
+  for (int bt = 0; bt < bitsize; bt++)
   {
-    byte *cdp = cdptr;
-    Serial.print("AFTER  ");
-    for (int bt = 0; bt < bitsize; bt++)
-    {
-      if (decode_tacts[bt] == 1)
-        Serial.print("II");
-      if (decode_tacts[bt] == 0)
-        Serial.print("OO");
-      if (decode_tacts[bt] == 2)
-        Serial.print("__");
-      if (decode_tacts[bt] == 3)
-        Serial.print("IO");
-      if (decode_tacts[bt] == 4)
-        Serial.print("OI");
-      Serial.print(" ");
-      *cdp++;
-    }
-    Serial.println();
+    if (decode_tacts[bt] == 1)
+      Serial.print("II");
+    if (decode_tacts[bt] == 0)
+      Serial.print("OO");
+    if (decode_tacts[bt] == 2)
+      Serial.print("__");
+    if (decode_tacts[bt] == 3)
+      Serial.print("IO");
+    if (decode_tacts[bt] == 4)
+      Serial.print("OI");
+    Serial.print(" ");
+    *cdp++;
   }
+  Serial.println();
+#endif
 
   return;
 }
